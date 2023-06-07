@@ -123,29 +123,52 @@ UStaticMesh* UAIMesh::GetStaticMesh()
 
 	MeshDescBuilder.SetMeshDescription(&MeshDescription->GetMeshDescription());
 	MeshDescBuilder.EnablePolyGroups();
-	MeshDescBuilder.SetNumUVLayers(1);
+	int uvLayers = 0;
+	//while (Mesh->HasTextureCoords(uvLayers)) {
+	//	uvLayers++;
+	//}
+
+	MeshDescBuilder.SetNumUVLayers(uvLayers+1);
+
+	UE_LOG(LogAssimp, Warning, TEXT("building mesh"))
 
 	TArray<FVertexInstanceID> VertexInstances;
 	VertexInstances.AddUninitialized(Mesh->mNumVertices);
+	TArray<FUVID> UVIds;
+	UVIds.AddUninitialized(Mesh->mNumVertices);
+
 	for (unsigned int Index = 0; Index < Mesh->mNumVertices; Index++)
 	{
-		auto VertexID = MeshDescBuilder.AppendVertex(ToVector(Mesh->mVertices[Index]));
+		auto vec = ToVector(Mesh->mVertices[Index]);
+		vec.Z = -vec.Z;
+		auto tmpX = vec.X;
+		vec.X = vec.Y;
+		vec.Y = tmpX;
+		auto VertexID = MeshDescBuilder.AppendVertex(vec);
 
 		auto Instance = MeshDescBuilder.AppendInstance(VertexID);
 		VertexInstances[Index] = Instance;
-		
 		if(Mesh->HasNormals())
 		{
-		MeshDescBuilder.SetInstanceNormal(Instance,ToVector(Mesh->mNormals[Index]));
+			auto nrm = ToVector(Mesh->mNormals[Index]);
+			nrm.Z = -nrm.Z;
+			//MeshDescBuilder.SetInstanceNormal(Instance, nrm);
+			// let unreal build its own normals
 		}else
 		{
 			UE_LOG(LogAssimp,Warning,TEXT("Normals not found consider generating them with assimp"))
 		}
-		
-		if (Mesh->HasTextureCoords(0))
+
+		int currUvLayer = 0;
+
+		if (Mesh->HasTextureCoords(currUvLayer))
 		{
-			MeshDescBuilder.SetInstanceUV(
-				Instance, FVector2D(Mesh->mTextureCoords[0][Index].x, Mesh->mTextureCoords[0][Index].y), 0);
+			auto UvId = MeshDescBuilder.AppendUV(
+				FVector2D(
+					Mesh->mTextureCoords[currUvLayer][Index].x, 
+					-Mesh->mTextureCoords[currUvLayer][Index].y),
+				0);
+			UVIds[Index] = UvId;
 		}
 	}
 
@@ -157,16 +180,18 @@ UStaticMesh* UAIMesh::GetStaticMesh()
 		const auto Face = Mesh->mFaces[i];
 		if(Face.mNumIndices>2)
 		{
-			MeshDescBuilder.AppendTriangle(VertexInstances[Face.mIndices[0]], VertexInstances[Face.mIndices[1]],
+			auto triId = MeshDescBuilder.AppendTriangle(VertexInstances[Face.mIndices[0]], VertexInstances[Face.mIndices[1]],
 										   VertexInstances[Face.mIndices[2]], PolygonGroup);
+			MeshDescBuilder.AppendUVTriangle(triId, UVIds[Face.mIndices[0]], UVIds[Face.mIndices[1]], UVIds[Face.mIndices[2]], 0);
 		}
 	}
 	// At least one material must be added
-	 StaticMesh = NewObject<UStaticMesh>(this);
+	StaticMesh = NewObject<UStaticMesh>(this);
 	StaticMesh->GetStaticMaterials().Add(FStaticMaterial());
 
 	UStaticMesh::FBuildMeshDescriptionsParams MeshDescriptionsParams;
 	MeshDescriptionsParams.bBuildSimpleCollision = true;
+	
 
 
 	// Build static mesh
