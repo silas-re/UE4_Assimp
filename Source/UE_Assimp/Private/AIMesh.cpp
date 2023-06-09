@@ -152,7 +152,10 @@ UStaticMesh* UAIMesh::GetStaticMesh()
 		{
 			auto nrm = ToVector(Mesh->mNormals[Index]);
 			nrm.Z = -nrm.Z;
-			//MeshDescBuilder.SetInstanceNormal(Instance, nrm);
+			auto tmpXN = nrm.X;
+			nrm.X = nrm.Y;
+			nrm.Y = tmpXN;
+			MeshDescBuilder.SetInstanceNormal(Instance, nrm);
 			// let unreal build its own normals
 		}else
 		{
@@ -182,7 +185,9 @@ UStaticMesh* UAIMesh::GetStaticMesh()
 		{
 			auto triId = MeshDescBuilder.AppendTriangle(VertexInstances[Face.mIndices[0]], VertexInstances[Face.mIndices[1]],
 										   VertexInstances[Face.mIndices[2]], PolygonGroup);
-			MeshDescBuilder.AppendUVTriangle(triId, UVIds[Face.mIndices[0]], UVIds[Face.mIndices[1]], UVIds[Face.mIndices[2]], 0);
+			if (Mesh->HasTextureCoords(0)) {
+				MeshDescBuilder.AppendUVTriangle(triId, UVIds[Face.mIndices[0]], UVIds[Face.mIndices[1]], UVIds[Face.mIndices[2]], 0);
+			}
 		}
 	}
 	// At least one material must be added
