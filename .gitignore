@@ -17,7 +17,6 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
 
 # Fortran module files
 *.mod
@@ -49,9 +48,8 @@ SourceArt/**/*.png
 SourceArt/**/*.tga
 
 # Binary Files
-Binaries/*
-Plugins/*/Binaries/*
-
+Binaries/Win64/*
+!Binaries/Win64/assimp.dll
 # Builds
 Build/*
 
